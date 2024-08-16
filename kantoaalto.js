@@ -128,6 +128,7 @@
     this._epaonnistunutYhdistaminen = 0;
     this._yhteydenMuodostus = Sitoumus();
     this._yhteysvirhe = Sitoumus();
+    this._yhteydenKatkaisu = Sitoumus();
 
     this._vastaanotto = new Jono(10);
 
@@ -163,28 +164,29 @@
       this._epaonnistunutYhdistaminen = 0;
       this.parametrit.kattely(this._websocket);
       this._yhteydenMuodostus.resolve([e, this._websocket]);
+      this._yhteydenKatkaisu = Sitoumus();
     },
     _onclose: function (e) {
-      this.tila = TILA.katkennut;
       let yhdistaUudelleen = this.parametrit.yhdistaUudelleen[[e.code]];
       let virhe = VIRHE[[e.code]];
+      this.tila = TILA.katkennut;
+      this._yhteydenMuodostus = Sitoumus()
+      this._yhteydenMuodostus.catch(
+        this._yhteysvirhe.resolve.bind(this._yhteysvirhe)
+      );
       if (yhdistaUudelleen) {
-        this._yhteydenMuodostus = Sitoumus()
-        this._yhteydenMuodostus.catch(
-          this._yhteysvirhe.resolve.bind(this._yhteysvirhe)
-        );
         window.setTimeout(
           this._avaaYhteys.bind(this),
           yhdistaUudelleen * (++this._epaonnistunutYhdistaminen)
         );
       }
-      else if (virhe)
-        this._yhteydenMuodostus.reject([e, virhe, e.reason]);
       else
-        this._yhteydenMuodostus.reject([e, null, e.reason]);
+        this._yhteydenMuodostus.reject([e, virhe, e.reason]);
+      this._yhteydenKatkaisu.resolve(e);
     },
     _onerror: function (e) {
       this.tila = TILA.virhe;
+      this._yhteydenKatkaisu.resolve(e);
       this._yhteydenMuodostus.reject([e]);
     },
     _onmessage: function (e) {
@@ -195,9 +197,9 @@
      * Lähetetään annettu data, kun yhteys on avoinna.
      */
     laheta: function (data) {
-      return this.then(
-        this._websocket.send.bind(this._websocket, data)
-      );
+      return this.then(function () {
+        this._websocket.send(data);
+      }.bind(this));
     },
     /*
      * Palautetaan sitoumus, joka täyttyy saapuvalla datalla.
@@ -233,10 +235,20 @@
     },
 
     /*
-     * Sulje Websocket-yhteys annetulla koodilla (oletus 1000).
+     * Palauttaa sitoumuksen, joka täyttyy, kun Websocket-yhteys
+     * katkeaa seuraavan kerran.
+     */
+    katkaistu: function () {
+      return this._yhteydenKatkaisu;
+    },
+
+    /*
+     * Sulje (avoin) Websocket-yhteys annetulla koodilla (oletus 1000).
      */
     sulje: function (koodi) {
-      this._websocket.close(koodi ?? 1000);
+      return this.then(function () {
+        this._websocket.close(koodi ?? 1000)
+      }.bind(this));
     }
   });
 
