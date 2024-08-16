@@ -100,15 +100,16 @@
   function Kantoaalto (url, parametrit) {
     this.url = url ?? location.pathname;
     this.parametrit = Object.assign({
-      // Viive, jolla eri tyyppisissä WS-katkaisutilanteissa yritetään
-      // yhdistää uudelleen.
+      // Viive millisekunneissa, jolla eri tyyppisissä WS-katkaisutilanteissa
+      // yritetään yhdistää uudelleen.
       // Viive kaksinkertaistuu jokaisen epäonnistuneen yrityksen jälkeen,
       // kunnes yhteys muodostetaan jälleen onnistuneesti.
       yhdistaUudelleen: {
-        1006: 500,   // ms
-        1012: 500,   // ms
-        1013: 1000,  // ms
-        1014: 500,   // ms
+        1001: 2000,  // "Going Away" (palvelin tai selain päätti yhteyden).
+        1006: 500,   // "Abnormal Closure"
+        1012: 500,   // "Service Restart"
+        1013: 1000,  // "Try Again Later"
+        1014: 500,   // "Bad Gateway"
       },
 
       // Puskuroitavien, saapuneiden viestien enimmäismäärä.
@@ -180,7 +181,7 @@
           yhdistaUudelleen * (++this._epaonnistunutYhdistaminen)
         );
       }
-      else
+      else if (e.code > 1000)
         this._yhteydenMuodostus.reject([e, virhe, e.reason]);
       this._yhteydenKatkaisu.resolve(e);
     },
