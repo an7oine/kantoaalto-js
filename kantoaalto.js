@@ -100,6 +100,9 @@
   function Kantoaalto (url, parametrit) {
     this.url = url ?? location.pathname;
     this.parametrit = Object.assign({
+      // Avataanko yhteys automaattisesti heti?
+      avaaAutomaattisesti: true,
+
       // Viive millisekunneissa, jolla eri tyyppisissä WS-katkaisutilanteissa
       // yritetään yhdistää uudelleen.
       // Viive kaksinkertaistuu jokaisen epäonnistuneen yrityksen jälkeen,
@@ -139,8 +142,9 @@
       this._yhteysvirhe.resolve.bind(this._yhteysvirhe)
     );
 
-    // Avataan yhteys heti, kun mahdollista.
-    this._avaaYhteys();
+    // Avataan yhteys tarvittaessa heti.
+    if (this.parametrit.avaaAutomaattisesti)
+      this._avaaYhteys();
   }
 
   Object.assign(Kantoaalto.prototype, {
@@ -250,6 +254,17 @@
       return this.then(function () {
         this._websocket.close(koodi ?? 1000)
       }.bind(this));
+    },
+
+    /*
+     * Avaa yhteys tarvittaessa (uudelleen).
+     */
+    avaa: function () {
+      if (this.tila != TILA.yhdistetty) {
+        this._avaaYhteys();
+        return this.then();
+      }
+      return Promise.resolve();
     }
   });
 
