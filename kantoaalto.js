@@ -175,10 +175,7 @@
       let yhdistaUudelleen = this.parametrit.yhdistaUudelleen[[e.code]];
       let virhe = VIRHE[[e.code]];
       this.tila = TILA.katkennut;
-      this._yhteydenMuodostus = Sitoumus()
-      this._yhteydenMuodostus.catch(
-        this._yhteysvirhe.resolve.bind(this._yhteysvirhe)
-      );
+
       if (yhdistaUudelleen) {
         window.setTimeout(
           this._avaaYhteys.bind(this),
@@ -187,12 +184,31 @@
       }
       else if (e.code > 1000)
         this._yhteydenMuodostus.reject([e, virhe, e.reason]);
+
+      let vanha = this._yhteydenMuodostus;
+      this._yhteydenMuodostus = Sitoumus()
+      this._yhteydenMuodostus.then(vanha.resolve).catch(
+        this._yhteysvirhe.resolve.bind(this._yhteysvirhe)
+      );
       this._yhteydenKatkaisu.resolve(e);
     },
     _onerror: function (e) {
+      let yhdistaUudelleen = this.parametrit.yhdistaUudelleen[[e.code]];
       this.tila = TILA.virhe;
+
+      if (yhdistaUudelleen) {
+        window.setTimeout(
+          this._avaaYhteys.bind(this),
+          yhdistaUudelleen * (++this._epaonnistunutYhdistaminen)
+        );
+      }
+      else if (e.code > 1000)
+        this._yhteydenMuodostus.reject([e, virhe, e.reason]);
+
+      let vanha = this._yhteydenMuodostus;
+      this._yhteydenMuodostus = Sitoumus()
+      this._yhteydenMuodostus.then(vanha.resolve);
       this._yhteydenKatkaisu.resolve(e);
-      this._yhteydenMuodostus.reject([e]);
     },
     _onmessage: function (e) {
       this._vastaanotto.saapuva(e.data);
